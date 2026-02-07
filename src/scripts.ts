@@ -15,6 +15,7 @@ import querystring from "node:querystring";
 import { DetectedLangModel, LanguageDetectType } from "./detectLanguage/types";
 import { QueryWordInfo } from "./dictionary/youdao/types";
 import { getAppleLangCode, getYoudaoLangCodeFromAppleCode } from "./language/languages";
+import { isLinux, isMacOS, isWindows } from "./platform";
 import { RequestErrorInfo, RequestType, TranslationType } from "./types";
 
 const execCommandTimeout = 10000; // 10s
@@ -30,6 +31,10 @@ export function appleTranslate(
   timeout = execCommandTimeout,
 ): Promise<string | undefined> {
   console.log(`---> start Apple translate`);
+  if (!isMacOS) {
+    console.log(`skip Apple translate on non-macOS platform`);
+    return Promise.resolve(undefined);
+  }
 
   const { word, fromLanguage, toLanguage } = queryTextInfo;
   const startTime = new Date().getTime();
@@ -119,6 +124,13 @@ export function appleLanguageDetect(
   timeout = execCommandTimeout,
 ): Promise<DetectedLangModel> {
   console.log(`start apple detect: ${text}`);
+  if (!isMacOS) {
+    return Promise.reject({
+      type: LanguageDetectType.Apple,
+      message: "Apple language detect is only available on macOS",
+    } as RequestErrorInfo);
+  }
+
   const startTime = new Date().getTime();
   const appleScript = getShortcutsScript("Easydict-LanguageDetect-V1.2.0", text);
   const type = LanguageDetectType.Apple;
@@ -206,7 +218,18 @@ function getShortcutsScript(shortcutName: string, input: string): string {
  */
 export const openInEudic = (queryText: string) => {
   const url = `eudic://dict/${queryText}`;
-  execFile("open", [url], (error) => {
+  const command = isMacOS ? "open" : isWindows ? "cmd" : isLinux ? "xdg-open" : undefined;
+  const args = isWindows ? ["/c", "start", "", url] : [url];
+
+  if (!command) {
+    showToast({
+      title: "Current platform is not supported.",
+      style: Toast.Style.Failure,
+    });
+    return;
+  }
+
+  execFile(command, args, (error) => {
     if (error) {
       console.error(`open in eudic error: ${error}`);
       showToast({
@@ -221,6 +244,15 @@ export const openInEudic = (queryText: string) => {
  * Exec osascript to post notification with title and content
  */
 export function postNotification(content: string, title: string, subtitle = "") {
+  if (!isMacOS) {
+    showToast({
+      style: Toast.Style.Animated,
+      title,
+      message: content,
+    });
+    return;
+  }
+
   const appleScript = `osascript -e 'display notification "${content}" with title "${title}" subtitle "${subtitle}"'`;
   exec(appleScript, (error) => {
     if (error) {
@@ -231,6 +263,10 @@ export function postNotification(content: string, title: string, subtitle = "") 
 
 export function exitExtension() {
   console.log("exit extension");
+  if (!isMacOS) {
+    return;
+  }
+
   // use cmd+W to close the extension, maybe delay a little bit, 0.5s
   const appleScript = `
     tell application "System Events"

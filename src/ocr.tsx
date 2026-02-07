@@ -31,6 +31,7 @@ export default async function command() {
     }
   } catch (e) {
     console.error(e);
-    await showHUD("❌ Failed detecting text");
+    const message = e instanceof Error ? e.message : "Failed detecting text";
+    await showHUD(`❌ ${message}`);
   }
 }

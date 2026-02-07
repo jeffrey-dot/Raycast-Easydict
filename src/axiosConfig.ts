@@ -12,8 +12,8 @@ import { LocalStorage, showToast, Toast } from "@raycast/api";
 import axios from "axios";
 import EventEmitter from "events";
 import { HttpProxyAgent, HttpsProxyAgent } from "hpagent";
-import { getMacSystemProxy } from "mac-system-proxy";
 import { networkTimeout } from "./consts";
+import { isMacOS } from "./platform";
 
 EventEmitter.defaultMaxListeners = 15; // default is 10.
 
@@ -133,12 +133,20 @@ export function getSystemProxyURL(): Promise<string | undefined> {
     // Remove previous system proxy URL.
     LocalStorage.removeItem(systemProxyURLKey);
 
-    // 1.Try to get system proxy from env.HTTP_PROXY first, the value is set by Raycast if user enabled "Web Proxy" in Preferences.
+    // 1.Try to get system proxy from env first, these values may be set by Raycast or user environment.
     const HTTP_PROXY = env.HTTP_PROXY;
-    if (HTTP_PROXY) {
-      console.warn(`---> get system proxy from env.HTTP_PROXY: ${HTTP_PROXY}`);
-      LocalStorage.setItem(systemProxyURLKey, HTTP_PROXY);
-      resolve(HTTP_PROXY);
+    const HTTPS_PROXY = env.HTTPS_PROXY;
+    const envProxy = HTTPS_PROXY || HTTP_PROXY;
+    if (envProxy) {
+      console.warn(`---> get system proxy from env: ${envProxy}`);
+      LocalStorage.setItem(systemProxyURLKey, envProxy);
+      resolve(envProxy);
+      return;
+    }
+
+    if (!isMacOS) {
+      console.log(`---> current platform is not macOS, skip mac-system-proxy`);
+      resolve(undefined);
       return;
     }
 
@@ -151,11 +159,12 @@ export function getSystemProxyURL(): Promise<string | undefined> {
     // env.PATH = "/usr/sbin"; // $ where scutil
     env.PATH = "/usr/sbin:/usr/bin:/bin:/sbin";
 
-    // 2.Use mac-system-proxy to get system proxy.
+    // 2.Use mac-system-proxy to get system proxy on macOS.
     const startTime = Date.now();
 
-    // * This function is sync and will block ~0.4s, even it's a promise.
-    getMacSystemProxy()
+    // Dynamically import mac-only dependency to keep non-macOS runtime compatible.
+    import("mac-system-proxy")
+      .then(({ getMacSystemProxy }) => getMacSystemProxy())
       .then((systemProxy) => {
         // console.log(`---> get system proxy: ${JSON.stringify(systemProxy, null, 4)}`);
         if (!systemProxy.HTTPEnable || !systemProxy.HTTPProxy) {

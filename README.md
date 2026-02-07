@@ -39,6 +39,12 @@
 - [x] Support OpenAI, DeepL, Google, Bing, Baidu, Tencent, Volcano, Youdao, and Caiyun translation.
 - [x] Support 48+ languages.
 
+## Platform Compatibility
+
+- Core translation and dictionary services work on `macOS`, `Windows`, and `Linux`.
+- `Apple Translate`, `Apple Language Detect`, and screenshot OCR are macOS-only features and now degrade gracefully on non-macOS platforms.
+- System proxy detection now supports generic `HTTP_PROXY` / `HTTPS_PROXY` on all platforms, with `mac-system-proxy` only used on macOS.
+
 **_If you like this extension, please give it a [Star](https://github.com/tisfeng/Raycast-Easydict) ⭐️, thanks!_**
 
 ---

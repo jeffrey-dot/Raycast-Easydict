@@ -15,6 +15,7 @@ import { clipboardQueryTextKey } from "./consts";
 import { LanguageDetectType } from "./detectLanguage/types";
 import { LingueeListItemType } from "./dictionary/linguee/types";
 import { QueryWordInfo, YoudaoDictionaryListItemType } from "./dictionary/youdao/types";
+import { isMacOS } from "./platform";
 import { myPreferences } from "./preferences";
 import { Easydict } from "./releaseVersion/versionInfo";
 import {
@@ -90,6 +91,10 @@ export function saveQueryClipboardRecord(text: string) {
  * traverse all applications, check if Eudic is installed
  */
 export async function checkIfInstalledEudic(): Promise<boolean> {
+  if (!isMacOS) {
+    return Promise.resolve(false);
+  }
+
   const installedApplications = await getApplications(); // cost time: 20 ms
   for (const application of installedApplications) {
     const appBundleId = application.bundleId;

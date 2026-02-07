@@ -10,11 +10,17 @@
 
 import { environment } from "@raycast/api";
 import { execa, ExecaError } from "execa";
+import { access, chmod } from "fs/promises";
 import { join } from "path";
-import { chmod } from "fs/promises";
+import { isMacOS } from "./platform";
 
 const recognizeText = async () => {
+  if (!isMacOS) {
+    throw new Error("OCR screenshot is only available on macOS currently.");
+  }
+
   const command = join(environment.assetsPath, "recognizeText");
+  await access(command);
   await chmod(command, "755");
   try {
     // Maybe user has not installed Xcode(swift), https://github.com/raycast/extensions/pull/6613#issuecomment-1560785710
